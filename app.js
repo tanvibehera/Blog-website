@@ -3,6 +3,7 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
+const mongoose = require('mongoose');
 const _ = require("lodash");
 
 const homeStartingContent = "Lacus vel facilisis volutpat est velit egestas dui id ornare. Semper auctor neque vitae tempus quam. Sit amet cursus sit amet dictum sit amet justo. Viverra tellus in hac habitasse. Imperdiet proin fermentum leo vel orci porta. Donec ultrices tincidunt arcu non sodales neque sodales ut. Mattis molestie a iaculis at erat pellentesque adipiscing. Magnis dis parturient montes nascetur ridiculus mus mauris vitae ultricies. Adipiscing elit ut aliquam purus sit amet luctus venenatis lectus. Ultrices vitae auctor eu augue ut lectus arcu bibendum at. Odio euismod lacinia at quis risus sed vulputate odio ut. Cursus mattis molestie a iaculis at erat pellentesque adipiscing.";
@@ -11,15 +12,27 @@ const contactContent = "Scelerisque eleifend donec pretium vulputate sapien. Rho
 
 const app = express();
 
+mongoose.set('strictQuery',false);
+mongoose.connect('mongodb://127.0.0.1:27017/blogDB');
+
 app.set('view engine', 'ejs');
 
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(express.static("public"));
 
-const posts = [];
+const postSchema = {
+  title: String,
+  content: String
+};
+
+const Post = mongoose.model("Post", postSchema);
+
+// const posts = [];
 
 app.get("/", function (req, res) {
-  res.render("home", {content: homeStartingContent, posts: posts});
+  Post.find({}, function (err, posts) {
+    res.render("home", {content: homeStartingContent, posts: posts});
+  });
   // console.log(posts);
 });
 
@@ -36,23 +49,31 @@ app.get("/compose", function (req, res) {
 });
 
 app.post("/compose", function (req, res) {
-  const post = {
+  const post = new Post({
     title: req.body.postTitle,
     content: req.body.postBody
-  };
+  });
   // console.log("yes");
-  posts.push(post);
+  // posts.push(post);
+  post.save();
   res.redirect("/");
 });
 
-app.get("/posts/:postName", function (req, res) {
+app.get("/posts/:postId", function (req, res) {
   // console.log(req.params.postName);
+  const requestedPostId = req.params.postId;
   let name = _.lowerCase(req.params.postName);
-  for(let i=0; i<posts.length; ++i){
-    if(_.lowerCase(posts[i].title) === name){
-      res.render("post", {title: posts[i].title, content: posts[i].content});
-    }
-  };
+  Post.findOne({_id: requestedPostId}, function (err, post) {
+    res.render("post",{
+      title: post.title,
+      content: post.content
+    });
+  });
+  // for(let i=0; i<posts.length; ++i){
+  //   if(_.lowerCase(posts[i].title) === name){
+  //     res.render("post", {title: posts[i].title, content: posts[i].content});
+  //   }
+  // };
 });
 
 app.listen(3000, function() {
